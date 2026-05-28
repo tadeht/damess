@@ -1994,7 +1994,7 @@ function WorkspaceTopbar({
   }
 
   return (
-    <header className={`flex h-[72px] items-center justify-between gap-4 border-b bg-[#2a0631]/80 px-5 transition-all duration-500 ${updateAvailable ? "border-violet-500 shadow-[0_4px_25px_rgba(139,92,246,0.3)]" : "border-white/10"}`}>
+    <header className={`flex h-[72px] items-center justify-between gap-4 border-b px-5 transition-all duration-500 ${updateAvailable ? "animate-header-glow" : "border-white/10 bg-[#2a0631]/80"}`}>
       <div className="hidden w-10 shrink-0 md:block" />
       <div className="relative hidden min-w-0 max-w-2xl flex-1 md:block" onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-center gap-3 rounded-xl border border-white/12 bg-white/12 px-4 py-2.5 text-sm text-white/55 focus-within:border-white/35 focus-within:bg-white/15">

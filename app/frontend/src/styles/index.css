@@ -1471,3 +1471,20 @@ textarea {
 .velorah-hero .animate-fade-rise-delay-2 {
   animation: fade-rise 0.8s ease-out 0.4s both;
 }
+
+@keyframes header-update-pulse {
+  0%, 100% {
+    background-color: rgba(42, 6, 49, 0.8);
+    border-bottom-color: rgba(139, 92, 246, 0.35);
+    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.2);
+  }
+  50% {
+    background-color: rgba(58, 8, 68, 0.95);
+    border-bottom-color: rgba(139, 92, 246, 0.85);
+    box-shadow: 0 4px 30px rgba(139, 92, 246, 0.55);
+  }
+}
+
+.animate-header-glow {
+  animation: header-update-pulse 3s infinite ease-in-out;
+}
