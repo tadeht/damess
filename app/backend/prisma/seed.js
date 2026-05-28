@@ -147,6 +147,7 @@ async function main() {
     create: {
       fullName: "Quản trị hệ thống",
       email: "admin@example.com",
+      username: "admin",
       passwordHash,
       roleId: roleByCode.ADMIN.id,
       departmentId: departmentByCode.VH.id,
@@ -165,6 +166,7 @@ async function main() {
     create: {
       fullName: "Nguyễn Minh Quản",
       email: "lead.kt@example.com",
+      username: "lead.kt",
       passwordHash,
       roleId: roleByCode.ASSIGNEE.id,
       departmentId: departmentByCode.KT.id,
@@ -178,6 +180,7 @@ async function main() {
     create: {
       fullName: "Trần Thu Hà",
       email: "nhanvien.kd@example.com",
+      username: "nhanvien.kd",
       passwordHash,
       roleId: roleByCode.REQUESTER.id,
       departmentId: departmentByCode.KD.id,
@@ -191,6 +194,7 @@ async function main() {
     create: {
       fullName: "Lê Anh Tuấn",
       email: "xuly.kt@example.com",
+      username: "xuly.kt",
       passwordHash,
       roleId: roleByCode.ASSIGNEE.id,
       departmentId: departmentByCode.KT.id,
