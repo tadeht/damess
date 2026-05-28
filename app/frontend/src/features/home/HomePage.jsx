@@ -184,11 +184,8 @@ export function HomePage() {
             hasScrolled ? "home-nav--floating" : "home-nav--top"
           }`}
         >
-          <a href="#home" onClick={handleLogoClick} className="home-logo" aria-label="Trở về màn hình chính">
-            <span className="home-logo__mark" aria-hidden="true">D</span>
-            <span className="home-logo__word" style={{ fontFamily: "'Instrument Serif', serif" }}>
-              Damess<sup className="text-xs">®</sup>
-            </span>
+          <a href="#home" onClick={handleLogoClick} className="home-logo flex items-center" aria-label="Trở về màn hình chính">
+            <img src="/logo_ss_refined.png" alt="Damess" className="h-9 w-auto object-contain" />
           </a>
 
           <div className="hidden items-center gap-8 md:flex">

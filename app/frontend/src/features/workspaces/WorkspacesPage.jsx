@@ -1417,9 +1417,10 @@ function WorkspaceRail({
     <aside className="relative flex w-[76px] shrink-0 flex-col items-center border-r border-white/10 bg-[#210026]/88 px-2 py-4">
       <Link
         to="/"
-        className="mb-4 block w-full text-center text-[11px] font-medium text-white/42 transition hover:text-white/72"
+        className="mb-6 block transition hover:scale-105"
+        title="Trang chủ"
       >
-        Trang chủ
+        <img src="/logo_square_icon.png" alt="Damess" className="h-10 w-10 object-contain rounded-xl" />
       </Link>
 
       <button

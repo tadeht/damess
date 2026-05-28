@@ -208,6 +208,7 @@ function createWindow() {
     minWidth: 1100,
     minHeight: 700,
     title: "Damess",
+    icon: path.join(__dirname, "app_icon.png"),
     backgroundColor: "#1a1b1e",
     webPreferences: {
       contextIsolation: true,

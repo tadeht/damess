@@ -41,3 +41,7 @@ logs/
 *.bin
 *.dat
 *.docx
+
+# Temporary logo designs
+/logo_*.png
+
