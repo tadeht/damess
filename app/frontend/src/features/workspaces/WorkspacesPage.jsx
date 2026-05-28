@@ -1420,7 +1420,7 @@ function WorkspaceRail({
         className="mb-6 block transition hover:scale-105"
         title="Trang chủ"
       >
-        <img src="/logo_square_icon.png" alt="Damess" className="h-10 w-10 object-contain rounded-xl" />
+        <img src="./logo_square_icon.png" alt="Damess" className="h-10 w-10 object-contain rounded-xl" />
       </Link>
 
       <button

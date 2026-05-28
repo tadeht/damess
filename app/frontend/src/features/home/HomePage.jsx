@@ -185,7 +185,7 @@ export function HomePage() {
           }`}
         >
           <a href="#home" onClick={handleLogoClick} className="home-logo flex items-center" aria-label="Trở về màn hình chính">
-            <img src="/logo_ss_refined.png" alt="Damess" className="h-9 w-auto object-contain" />
+            <img src="./logo_ss_refined.png" alt="Damess" className="h-9 w-auto object-contain" />
           </a>
 
           <div className="hidden items-center gap-8 md:flex">

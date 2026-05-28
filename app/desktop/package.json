@@ -15,6 +15,7 @@
   "build": {
     "appId": "vn.datbn.damess",
     "productName": "Damess",
+    "icon": "app_icon.png",
     "directories": {
       "output": "dist"
     },
@@ -28,6 +29,7 @@
       }
     ],
     "win": {
+      "icon": "app_icon.ico",
       "signAndEditExecutable": false,
       "target": [
         "dir"
