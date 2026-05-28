@@ -1,0 +1,115 @@
+erDiagram
+    roles ||--o{ users : has
+    departments ||--o{ users : includes
+    departments ||--o{ requests : handles
+    users ||--o{ requests : creates
+    users ||--o{ requests : assigned_to
+    request_types ||--o{ requests : categorizes
+    priorities ||--o{ requests : prioritizes
+    statuses ||--o{ requests : marks
+    requests ||--o{ request_comments : has
+    requests ||--o{ request_histories : has
+    users ||--o{ request_comments : writes
+    users ||--o{ request_histories : performs
+
+    roles {
+        int id PK
+        string name
+        string code UK
+        string description
+        datetime created_at
+        datetime updated_at
+    }
+
+    departments {
+        int id PK
+        string name
+        string code UK
+        string description
+        int manager_id FK
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+
+    users {
+        int id PK
+        string full_name
+        string email UK
+        string password_hash
+        string phone
+        int role_id FK
+        int department_id FK
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+
+    request_types {
+        int id PK
+        string name
+        string code UK
+        string description
+        int default_priority_id FK
+        boolean is_active
+        datetime created_at
+        datetime updated_at
+    }
+
+    priorities {
+        int id PK
+        string name
+        string code UK
+        int level
+        string color
+        datetime created_at
+        datetime updated_at
+    }
+
+    statuses {
+        int id PK
+        string name
+        string code UK
+        string color
+        int sort_order
+        boolean is_final
+        datetime created_at
+        datetime updated_at
+    }
+
+    requests {
+        int id PK
+        string request_code UK
+        string title
+        string description
+        int request_type_id FK
+        int priority_id FK
+        int status_id FK
+        int created_by_id FK
+        int assigned_to_id FK
+        int assigned_department_id FK
+        datetime due_date
+        datetime completed_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    request_comments {
+        int id PK
+        int request_id FK
+        int user_id FK
+        string content
+        datetime created_at
+        datetime updated_at
+    }
+
+    request_histories {
+        int id PK
+        int request_id FK
+        int actor_id FK
+        string action
+        string old_value
+        string new_value
+        string note
+        datetime created_at
+    }

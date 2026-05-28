@@ -1,0 +1,37 @@
+{
+  "name": "he-thong-quan-ly-yeu-cau-desktop",
+  "version": "1.0.0",
+  "description": "Ứng dụng desktop cho Damess",
+  "main": "main.cjs",
+  "scripts": {
+    "dist": "electron-builder --win dir",
+    "dist:portable": "electron-builder --win portable",
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "vn.datbn.damess",
+    "productName": "Damess",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.cjs"
+    ],
+    "extraResources": [
+      {
+        "from": "../frontend/dist",
+        "to": "frontend/dist"
+      }
+    ],
+    "win": {
+      "signAndEditExecutable": false,
+      "target": [
+        "dir"
+      ]
+    }
+  }
+}

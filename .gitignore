@@ -1,0 +1,43 @@
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment variables (security sensitive)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE configurations
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Packaging and builds (too large for GitHub)
+release/desktop-app/
+release/*.zip
+app/desktop/dist/
+app/desktop/out/
+app/backend/public/downloads/
+
+# Local logs
+logs/
+*.log
+
+# General large binaries
+*.zip
+*.rar
+*.exe
+*.dll
+*.pak
+*.bin
+*.dat
+*.docx

@@ -1,0 +1,544 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String
+  code        String   @unique
+  description String?
+  users       User[]
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("roles")
+}
+
+model Department {
+  id               Int       @id @default(autoincrement())
+  name             String
+  code             String    @unique
+  description      String?
+  managerId        Int?      @map("manager_id")
+  manager          User?     @relation("DepartmentManager", fields: [managerId], references: [id])
+  users            User[]    @relation("DepartmentUsers")
+  assignedRequests Request[] @relation("AssignedDepartment")
+  status           String    @default("DRAFT")
+  isActive         Boolean   @default(true) @map("is_active")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@map("departments")
+}
+
+model User {
+  id                          Int                    @id @default(autoincrement())
+  fullName                    String                 @map("full_name")
+  username                    String                 @unique
+  email                       String                 @unique
+  passwordHash                String                 @map("password_hash")
+  emailVerifiedAt             DateTime?              @map("email_verified_at")
+  emailVerificationToken      String?                @unique @map("email_verification_token")
+  emailVerificationExpiresAt  DateTime?              @map("email_verification_expires_at")
+  passwordResetCodeHash       String?                @map("password_reset_code_hash")
+  passwordResetExpiresAt      DateTime?              @map("password_reset_expires_at")
+  phone                       String?
+  roleId                      Int                    @map("role_id")
+  role                        Role                   @relation(fields: [roleId], references: [id])
+  departmentId                Int?                   @map("department_id")
+  department                  Department?            @relation("DepartmentUsers", fields: [departmentId], references: [id])
+  managedDepartments          Department[]           @relation("DepartmentManager")
+  createdRequests             Request[]              @relation("RequestCreator")
+  assignedRequests            Request[]              @relation("RequestAssignee")
+  privateRequestAccesses      RequestPrivateMember[]
+  uploadedRequestAttachments  RequestAttachment[]
+  comments                    RequestComment[]
+  histories                   RequestHistory[]       @relation("HistoryActor")
+  createdWorkspaces           Workspace[]            @relation("WorkspaceCreator")
+  workspaceMemberships        WorkspaceMember[]
+  workspaceActivitiesAsActor  WorkspaceActivity[]    @relation("WorkspaceActivityActor")
+  workspaceActivitiesAsTarget WorkspaceActivity[]    @relation("WorkspaceActivityTarget")
+  createdProjects             Project[]              @relation("ProjectCreator")
+  createdProjectPages         ProjectPage[]          @relation("ProjectPageCreator")
+  updatedProjectPages         ProjectPage[]          @relation("ProjectPageUpdater")
+  projectPageRevisions        ProjectPageRevision[]  @relation("ProjectPageRevisionCreator")
+  assignedProjectWorkItems    ProjectWorkItem[]      @relation("ProjectWorkItemAssignee")
+  createdProjectWorkItems     ProjectWorkItem[]      @relation("ProjectWorkItemCreator")
+  projectWorkLogs             ProjectWorkLog[]       @relation("ProjectWorkLogUser")
+  notifications               Notification[]
+  notificationSettings        NotificationSettings?
+  sentFriendRequests          FriendRequest[]        @relation("FriendRequestRequester")
+  receivedFriendRequests      FriendRequest[]        @relation("FriendRequestAddressee")
+  friendshipsAsUserA          Friendship[]           @relation("FriendshipUserA")
+  friendshipsAsUserB          Friendship[]           @relation("FriendshipUserB")
+  sentDirectMessages          DirectMessage[]        @relation("DirectMessageSender")
+  receivedDirectMessages      DirectMessage[]        @relation("DirectMessageReceiver")
+  workspaceChannelsCreated    WorkspaceChannel[]     @relation("WorkspaceChannelCreator")
+  workspaceMessages           WorkspaceMessage[]     @relation("WorkspaceMessageSender")
+  workspaceMessageEdits       WorkspaceMessage[]     @relation("WorkspaceMessageDeletedBy")
+  workspaceMessageReads       WorkspaceMessageRead[]
+  isActive                    Boolean                @default(true) @map("is_active")
+  createdAt                   DateTime               @default(now()) @map("created_at")
+  updatedAt                   DateTime               @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model RequestType {
+  id                Int        @id @default(autoincrement())
+  name              String
+  code              String     @unique
+  description       String?
+  workspaceId       Int?       @map("workspace_id")
+  workspace         Workspace? @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  defaultPriorityId Int?       @map("default_priority_id")
+  defaultPriority   Priority?  @relation(fields: [defaultPriorityId], references: [id])
+  requests          Request[]
+  isActive          Boolean    @default(true) @map("is_active")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  @@index([workspaceId])
+  @@map("request_types")
+}
+
+model Priority {
+  id           Int           @id @default(autoincrement())
+  name         String
+  code         String        @unique
+  level        Int
+  color        String?
+  requestTypes RequestType[]
+  requests     Request[]
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  @@map("priorities")
+}
+
+model Status {
+  id        Int       @id @default(autoincrement())
+  name      String
+  code      String    @unique
+  color     String?
+  sortOrder Int       @default(0) @map("sort_order")
+  isFinal   Boolean   @default(false) @map("is_final")
+  requests  Request[]
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("statuses")
+}
+
+model Request {
+  id                   Int                    @id @default(autoincrement())
+  requestCode          String                 @unique @map("request_code")
+  title                String
+  description          String
+  workspaceId          Int?                   @map("workspace_id")
+  workspace            Workspace?             @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  projectId            Int?                   @map("project_id")
+  project              Project?               @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  visibility           String                 @default("PUBLIC")
+  requestTypeId        Int                    @map("request_type_id")
+  requestType          RequestType            @relation(fields: [requestTypeId], references: [id])
+  priorityId           Int                    @map("priority_id")
+  priority             Priority               @relation(fields: [priorityId], references: [id])
+  statusId             Int                    @map("status_id")
+  status               Status                 @relation(fields: [statusId], references: [id])
+  createdById          Int                    @map("created_by_id")
+  createdBy            User                   @relation("RequestCreator", fields: [createdById], references: [id])
+  assignedToId         Int?                   @map("assigned_to_id")
+  assignedTo           User?                  @relation("RequestAssignee", fields: [assignedToId], references: [id])
+  assignedDepartmentId Int?                   @map("assigned_department_id")
+  assignedDepartment   Department?            @relation("AssignedDepartment", fields: [assignedDepartmentId], references: [id])
+  dueDate              DateTime?              @map("due_date")
+  completedAt          DateTime?              @map("completed_at")
+  comments             RequestComment[]
+  histories            RequestHistory[]
+  privateMembers       RequestPrivateMember[]
+  attachments          RequestAttachment[]
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @updatedAt @map("updated_at")
+
+  @@index([workspaceId])
+  @@index([projectId])
+  @@index([visibility])
+  @@map("requests")
+}
+
+model RequestAttachment {
+  id           Int      @id @default(autoincrement())
+  requestId    Int      @map("request_id")
+  request      Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  type         String   @default("FILE")
+  name         String
+  mime         String?
+  data         String
+  uploadedById Int      @map("uploaded_by_id")
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([requestId])
+  @@map("request_attachments")
+}
+
+model RequestPrivateMember {
+  id        Int      @id @default(autoincrement())
+  requestId Int      @map("request_id")
+  request   Request  @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([requestId, userId])
+  @@index([userId])
+  @@map("request_private_members")
+}
+
+model RequestComment {
+  id        Int      @id @default(autoincrement())
+  requestId Int      @map("request_id")
+  request   Request  @relation(fields: [requestId], references: [id])
+  userId    Int      @map("user_id")
+  user      User     @relation(fields: [userId], references: [id])
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("request_comments")
+}
+
+model RequestHistory {
+  id        Int      @id @default(autoincrement())
+  requestId Int      @map("request_id")
+  request   Request  @relation(fields: [requestId], references: [id])
+  actorId   Int      @map("actor_id")
+  actor     User     @relation("HistoryActor", fields: [actorId], references: [id])
+  action    String
+  oldValue  String?  @map("old_value")
+  newValue  String?  @map("new_value")
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("request_histories")
+}
+
+model ProcessingRule {
+  id          Int      @id @default(autoincrement())
+  name        String
+  code        String   @unique
+  description String
+  scope       String   @default("GENERAL")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("processing_rules")
+}
+
+model Workspace {
+  id                            Int                 @id @default(autoincrement())
+  name                          String
+  description                   String?
+  inviteCode                    String              @unique @map("invite_code")
+  logoName                      String?             @map("logo_name")
+  logoMime                      String?             @map("logo_mime")
+  logoData                      String?             @map("logo_data")
+  defaultSlaHours               Int?                @map("default_sla_hours")
+  allowRequesterDueDateOverride Boolean             @default(true) @map("allow_requester_due_date_override")
+  createdById                   Int                 @map("created_by_id")
+  createdBy                     User                @relation("WorkspaceCreator", fields: [createdById], references: [id])
+  members                       WorkspaceMember[]
+  activities                    WorkspaceActivity[]
+  requests                      Request[]
+  requestTypes                  RequestType[]
+  projects                      Project[]
+  channels                      WorkspaceChannel[]
+  isActive                      Boolean             @default(true) @map("is_active")
+  createdAt                     DateTime            @default(now()) @map("created_at")
+  updatedAt                     DateTime            @updatedAt @map("updated_at")
+
+  @@map("workspaces")
+}
+
+model Project {
+  id          Int       @id @default(autoincrement())
+  workspaceId Int       @map("workspace_id")
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  code        String
+  description String?
+  status      String    @default("ACTIVE")
+  startDate   DateTime? @map("start_date")
+  dueDate     DateTime? @map("due_date")
+  completedAt DateTime? @map("completed_at")
+  closedAt    DateTime? @map("closed_at")
+  closedReason String?  @map("closed_reason")
+  extendedAt  DateTime? @map("extended_at")
+  extensionReason String? @map("extension_reason")
+  createdById Int       @map("created_by_id")
+  createdBy   User      @relation("ProjectCreator", fields: [createdById], references: [id])
+  requests    Request[]
+  pages       ProjectPage[]
+  workItems   ProjectWorkItem[]
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([workspaceId, code])
+  @@index([workspaceId])
+  @@map("projects")
+}
+
+model ProjectWorkItem {
+  id           Int               @id @default(autoincrement())
+  projectId    Int               @map("project_id")
+  project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parentId     Int?              @map("parent_id")
+  parent       ProjectWorkItem?  @relation("ProjectWorkItemTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     ProjectWorkItem[] @relation("ProjectWorkItemTree")
+  type         String            @default("TASK")
+  title        String
+  description  String?
+  status       String            @default("TODO")
+  priority     String            @default("MEDIUM")
+  assignedToId Int?              @map("assigned_to_id")
+  assignedTo   User?             @relation("ProjectWorkItemAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdById  Int               @map("created_by_id")
+  createdBy    User              @relation("ProjectWorkItemCreator", fields: [createdById], references: [id])
+  startDate    DateTime?         @map("start_date")
+  dueDate      DateTime?         @map("due_date")
+  completedAt  DateTime?         @map("completed_at")
+  workLogs     ProjectWorkLog[]
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  @@index([projectId, status])
+  @@index([parentId])
+  @@index([assignedToId])
+  @@map("project_work_items")
+}
+
+model ProjectWorkLog {
+  id         Int             @id @default(autoincrement())
+  workItemId Int             @map("work_item_id")
+  workItem   ProjectWorkItem @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  userId     Int             @map("user_id")
+  user       User            @relation("ProjectWorkLogUser", fields: [userId], references: [id])
+  minutes    Int
+  note       String?
+  workedAt   DateTime        @default(now()) @map("worked_at")
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
+
+  @@index([workItemId])
+  @@index([userId])
+  @@map("project_work_logs")
+}
+
+model ProjectPage {
+  id          Int                   @id @default(autoincrement())
+  projectId   Int                   @map("project_id")
+  project     Project               @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  parentId    Int?                  @map("parent_id")
+  parent      ProjectPage?          @relation("ProjectPageTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    ProjectPage[]         @relation("ProjectPageTree")
+  title       String
+  slug        String
+  content     String                @default("")
+  sortOrder   Int                   @default(0) @map("sort_order")
+  createdById Int                   @map("created_by_id")
+  createdBy   User                  @relation("ProjectPageCreator", fields: [createdById], references: [id])
+  updatedById Int?                  @map("updated_by_id")
+  updatedBy   User?                 @relation("ProjectPageUpdater", fields: [updatedById], references: [id])
+  revisions   ProjectPageRevision[]
+  isArchived  Boolean               @default(false) @map("is_archived")
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+
+  @@unique([projectId, slug])
+  @@index([projectId, parentId])
+  @@map("project_pages")
+}
+
+model ProjectPageRevision {
+  id          Int         @id @default(autoincrement())
+  pageId      Int         @map("page_id")
+  page        ProjectPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  title       String
+  content     String
+  version     Int
+  createdById Int         @map("created_by_id")
+  createdBy   User        @relation("ProjectPageRevisionCreator", fields: [createdById], references: [id])
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  @@unique([pageId, version])
+  @@index([pageId])
+  @@map("project_page_revisions")
+}
+
+model WorkspaceMember {
+  id          Int       @id @default(autoincrement())
+  workspaceId Int       @map("workspace_id")
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      Int       @map("user_id")
+  user        User      @relation(fields: [userId], references: [id])
+  role        String    @default("MEMBER")
+  status      String    @default("ACTIVE")
+  joinedAt    DateTime  @default(now()) @map("joined_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+model WorkspaceActivity {
+  id           Int       @id @default(autoincrement())
+  workspaceId  Int       @map("workspace_id")
+  workspace    Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actorId      Int?      @map("actor_id")
+  actor        User?     @relation("WorkspaceActivityActor", fields: [actorId], references: [id])
+  targetUserId Int?      @map("target_user_id")
+  targetUser   User?     @relation("WorkspaceActivityTarget", fields: [targetUserId], references: [id])
+  action       String
+  title        String
+  description  String?
+  metadata     Json?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([workspaceId, createdAt])
+  @@map("workspace_activities")
+}
+
+model Notification {
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  user      User      @relation(fields: [userId], references: [id])
+  title     String
+  content   String
+  type      String    @default("SYSTEM")
+  channel   String    @default("IN_APP")
+  link      String?
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("notifications")
+}
+
+model NotificationSettings {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique @map("user_id")
+  user         User     @relation(fields: [userId], references: [id])
+  inAppEnabled Boolean  @default(true) @map("in_app_enabled")
+  emailEnabled Boolean  @default(true) @map("email_enabled")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("notification_settings")
+}
+
+model FriendRequest {
+  id          Int      @id @default(autoincrement())
+  requesterId Int      @map("requester_id")
+  requester   User     @relation("FriendRequestRequester", fields: [requesterId], references: [id])
+  addresseeId Int      @map("addressee_id")
+  addressee   User     @relation("FriendRequestAddressee", fields: [addresseeId], references: [id])
+  status      String   @default("PENDING")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@unique([requesterId, addresseeId])
+  @@map("friend_requests")
+}
+
+model Friendship {
+  id        Int      @id @default(autoincrement())
+  userAId   Int      @map("user_a_id")
+  userA     User     @relation("FriendshipUserA", fields: [userAId], references: [id])
+  userBId   Int      @map("user_b_id")
+  userB     User     @relation("FriendshipUserB", fields: [userBId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userAId, userBId])
+  @@map("friendships")
+}
+
+model DirectMessage {
+  id             Int       @id @default(autoincrement())
+  senderId       Int       @map("sender_id")
+  sender         User      @relation("DirectMessageSender", fields: [senderId], references: [id])
+  receiverId     Int       @map("receiver_id")
+  receiver       User      @relation("DirectMessageReceiver", fields: [receiverId], references: [id])
+  content        String
+  attachmentType String?   @map("attachment_type")
+  attachmentName String?   @map("attachment_name")
+  attachmentMime String?   @map("attachment_mime")
+  attachmentData String?   @map("attachment_data")
+  readAt         DateTime? @map("read_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  @@map("direct_messages")
+}
+
+model WorkspaceChannel {
+  id           Int                    @id @default(autoincrement())
+  workspaceId  Int                    @map("workspace_id")
+  workspace    Workspace              @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name         String
+  topic        String?
+  type         String                 @default("TEXT")
+  sortOrder    Int                    @default(0) @map("sort_order")
+  isArchived   Boolean                @default(false) @map("is_archived")
+  createdById  Int                    @map("created_by_id")
+  createdBy    User                   @relation("WorkspaceChannelCreator", fields: [createdById], references: [id])
+  messages     WorkspaceMessage[]
+  reads        WorkspaceMessageRead[]
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId, sortOrder])
+  @@map("workspace_channels")
+}
+
+model WorkspaceMessage {
+  id              Int              @id @default(autoincrement())
+  channelId       Int              @map("channel_id")
+  channel         WorkspaceChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  senderId        Int              @map("sender_id")
+  sender          User             @relation("WorkspaceMessageSender", fields: [senderId], references: [id])
+  content         String
+  attachmentType  String?          @map("attachment_type")
+  attachmentName  String?          @map("attachment_name")
+  attachmentMime  String?          @map("attachment_mime")
+  attachmentData  String?          @map("attachment_data")
+  editedAt        DateTime?        @map("edited_at")
+  deletedAt       DateTime?        @map("deleted_at")
+  deletedById     Int?             @map("deleted_by_id")
+  deletedBy       User?            @relation("WorkspaceMessageDeletedBy", fields: [deletedById], references: [id])
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  @@index([channelId, createdAt])
+  @@index([senderId])
+  @@map("workspace_messages")
+}
+
+model WorkspaceMessageRead {
+  id              Int              @id @default(autoincrement())
+  channelId       Int              @map("channel_id")
+  channel         WorkspaceChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  userId          Int              @map("user_id")
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadMessageId Int?           @map("last_read_message_id")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  @@unique([channelId, userId])
+  @@index([userId])
+  @@map("workspace_message_reads")
+}
