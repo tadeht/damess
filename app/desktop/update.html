@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Cập nhật ứng dụng</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #111214;
+      color: #f2f3f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow: hidden;
+      user-select: none;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      justify-content: center;
+    }
+    .title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #ffffff;
+      letter-spacing: -0.2px;
+    }
+    .status {
+      font-size: 13px;
+      color: #949ba4;
+      margin-bottom: 16px;
+    }
+    .progress-bar-bg {
+      width: 100%;
+      height: 8px;
+      background: #2b2d31;
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .progress-bar {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #5865f2, #8b5cf6);
+      border-radius: 9999px;
+      transition: width 150ms ease;
+    }
+    .info {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #949ba4;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="title">Đang tải bản cập nhật mới...</div>
+    <div id="status" class="status">Đang kết nối tới máy chủ...</div>
+    <div class="progress-bar-bg">
+      <div id="progress" class="progress-bar"></div>
+    </div>
+    <div class="info">
+      <span id="downloaded">0.0 MB / 0.0 MB</span>
+      <span id="percent">0%</span>
+    </div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    const statusEl = document.getElementById('status');
+    const progressEl = document.getElementById('progress');
+    const downloadedEl = document.getElementById('downloaded');
+    const percentEl = document.getElementById('percent');
+
+    ipcRenderer.on('download-progress', (event, data) => {
+      const { percent, downloadedMb, totalMb } = data;
+      progressEl.style.width = `${percent}%`;
+      percentEl.innerText = `${Math.round(percent)}%`;
+      downloadedEl.innerText = `${downloadedMb.toFixed(1)} MB / ${totalMb.toFixed(1)} MB`;
+      statusEl.innerText = `Tốc độ tải xuống ổn định...`;
+    });
+
+    ipcRenderer.on('download-status', (event, status) => {
+      statusEl.innerText = status;
+    });
+  </script>
+</body>
+</html>
