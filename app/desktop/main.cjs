@@ -1,7 +1,52 @@
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
-const { app, BrowserWindow, shell, dialog, ipcMain } = require("electron");
+const { app, BrowserWindow, shell, dialog, ipcMain, Tray, Menu } = require("electron");
+
+let tray = null;
+let mainWindow = null;
+let isQuitting = false;
+
+const trayIconPath = path.join(__dirname, "tray_icon.png");
+const trayIconUnreadPath = path.join(__dirname, "tray_icon_unread.png");
+
+function createTray() {
+  if (!fs.existsSync(trayIconPath)) {
+    console.error("Tray icon not found at", trayIconPath);
+  }
+  
+  tray = new Tray(trayIconPath);
+  
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: "Mở Damess",
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      }
+    },
+    { type: "separator" },
+    {
+      label: "Thoát",
+      click: () => {
+        isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+  
+  tray.setToolTip("Damess");
+  tray.setContextMenu(contextMenu);
+  
+  tray.on("double-click", () => {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
 
 ipcMain.on("start-update", (event, data) => {
   startUpdateProcess(data.url, data.version, BrowserWindow.fromWebContents(event.sender));
@@ -139,59 +184,25 @@ function startUpdateProcess(downloadUrl, latestVersion, parentWindow) {
   });
 }
 
-function checkForUpdates(mainWindow) {
-  // Simulate version comparison: pretend our local version is 0.9.0 (to trigger update for 1.0.0 on GitHub)
-  const currentVersion = "0.9.0"; 
-
-  const req = https.get("https://api.github.com/repos/tadeht/damess/releases/latest", {
-    headers: {
-      "User-Agent": "Electron-App-Updater"
+ipcMain.on("update-unread-count", (event, count) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  if (count > 0) {
+    win.flashFrame(true);
+    if (tray && fs.existsSync(trayIconUnreadPath)) {
+      tray.setImage(trayIconUnreadPath);
+      tray.setToolTip(`Damess (${count} thông báo mới)`);
     }
-  }, (res) => {
-    if (res.statusCode !== 200) {
-      console.error(`Check update failed: HTTP ${res.statusCode}`);
-      return;
+  } else {
+    win.flashFrame(false);
+    if (tray && fs.existsSync(trayIconPath)) {
+      tray.setImage(trayIconPath);
+      tray.setToolTip("Damess");
     }
-
-    let data = "";
-    res.on("data", (chunk) => { data += chunk; });
-    res.on("end", () => {
-      try {
-        const release = JSON.parse(data);
-        const latestVersion = release.tag_name; // e.g. "v1.0.0"
-        
-        if (compareVersions(latestVersion, currentVersion) > 0) {
-          const asset = release.assets.find(a => a.name.endsWith(".zip") || a.name.includes("Desktop"));
-          if (!asset) return;
-
-          const downloadUrl = asset.browser_download_url;
-
-          dialog.showMessageBox(mainWindow, {
-            type: "info",
-            buttons: ["Cập nhật ngay", "Để sau"],
-            defaultId: 0,
-            title: "Cập nhật Damess",
-            message: `Đã có bản cập nhật mới: ${latestVersion}`,
-            detail: `Bạn có muốn tải bản cập nhật ${latestVersion} ngay bây giờ không?`
-          }).then((result) => {
-            if (result.response === 0) {
-              startUpdateProcess(downloadUrl, latestVersion.replace("v", ""), mainWindow);
-            }
-          });
-        }
-      } catch (err) {
-        console.error("Error checking updates", err);
-      }
-    });
-  });
-
-  req.on("error", (err) => {
-    console.error("Check update request error", err);
-  });
-}
+  }
+});
 
 function createWindow() {
-  const win = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 1100,
@@ -205,33 +216,44 @@ function createWindow() {
     },
   });
 
-  win.removeMenu();
-  win.loadFile(getFrontendIndexPath());
+  mainWindow.removeMenu();
+  mainWindow.loadFile(getFrontendIndexPath());
 
-  win.webContents.setWindowOpenHandler(({ url }) => {
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
     return { action: "deny" };
   });
 
-  win.webContents.once("did-finish-load", () => {
-    setTimeout(() => {
-      checkForUpdates(win);
-    }, 2000); // Check after 2 seconds for smooth load
+  // Keep app running in background when close window
+  mainWindow.on("close", (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+    }
+  });
+
+  // Stop flashing taskbar icon when user focuses the window
+  mainWindow.on("focus", () => {
+    mainWindow.flashFrame(false);
   });
 }
 
 app.whenReady().then(() => {
+  createTray();
   createWindow();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
+    } else if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
     }
   });
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
+  if (process.platform !== "darwin" && isQuitting) {
     app.quit();
   }
 });

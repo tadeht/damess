@@ -127,6 +127,7 @@ export function WorkspacesPage() {
   const selectedWorkspace = workspaces.find((workspace) => workspace.id === selectedId) || null;
   const unreadMessageCount = friendsData.friends.reduce((total, item) => total + (item.unreadCount || 0), 0);
   const [updateAvailable, setUpdateAvailable] = useState(null);
+  const [showUpdatePopup, setShowUpdatePopup] = useState(false);
 
   useEffect(() => {
     const isDesktop = window.location.protocol === "file:" || Boolean(window.electronAPI);
@@ -138,17 +139,33 @@ export function WorkspacesPage() {
       .then((release) => {
         const latestVersion = release.tag_name;
         if (latestVersion && latestVersion !== `v${currentVersion}`) {
+          const skippedVersion = localStorage.getItem("skippedVersion");
+          if (latestVersion === skippedVersion) return; // Skipped this version
+
           const asset = release.assets?.find((a) => a.name.endsWith(".zip") || a.name.includes("Desktop"));
           if (asset) {
-            setUpdateAvailable({
+            const updateInfo = {
               version: latestVersion,
               downloadUrl: asset.browser_download_url,
-            });
+            };
+            setUpdateAvailable(updateInfo);
+
+            const sessionDismissed = sessionStorage.getItem("dismissedVersion") === latestVersion;
+            if (!sessionDismissed) {
+              setShowUpdatePopup(true);
+            }
           }
         }
       })
       .catch((err) => console.error("Error checking updates", err));
   }, []);
+
+  // Update unread count for electron system tray and flashing taskbar like Slack/Discord
+  useEffect(() => {
+    if (window.electronAPI && typeof window.electronAPI.updateUnreadCount === "function") {
+      window.electronAPI.updateUnreadCount(unreadMessageCount + unreadCount);
+    }
+  }, [unreadMessageCount, unreadCount]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -1290,6 +1307,72 @@ export function WorkspacesPage() {
       {modal === "delete" && deleteWorkspaceTarget && (
         <Modal title="Xóa workspace" onClose={closeModal}>
           <DeleteWorkspaceConfirm workspace={deleteWorkspaceTarget} user={user} submitting={submitting} onConfirm={confirmDeleteWorkspace} onCancel={closeModal} />
+        </Modal>
+      )}
+      {showUpdatePopup && updateAvailable && (
+        <Modal 
+          title="Đã có bản cập nhật mới!" 
+          onClose={() => {
+            sessionStorage.setItem("dismissedVersion", updateAvailable.version);
+            setShowUpdatePopup(false);
+          }}
+        >
+          <div className="space-y-5">
+            <div className="flex items-center gap-4 rounded-2xl bg-violet-500/10 border border-violet-500/20 p-4">
+              <Download className="h-10 w-10 text-violet-400 animate-bounce" />
+              <div>
+                <h3 className="font-semibold text-white">Phiên bản {updateAvailable.version}</h3>
+                <p className="text-sm text-white/60">Một phiên bản mới hơn đã sẵn sàng để tải xuống.</p>
+              </div>
+            </div>
+            
+            <p className="text-sm leading-6 text-white/70">
+              Hãy cập nhật ngay để trải nghiệm các tính năng mới nhất, cải thiện hiệu năng và sửa lỗi bảo mật. Tệp tin cập nhật sẽ được tải về thư mục Downloads.
+            </p>
+
+            <div className="flex flex-col gap-3 pt-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.electronAPI) {
+                    window.electronAPI.startUpdate(
+                      updateAvailable.downloadUrl,
+                      updateAvailable.version.replace("v", "")
+                    );
+                  }
+                  setShowUpdatePopup(false);
+                }}
+                className="flex-[2] flex items-center justify-center gap-2 rounded-full bg-violet-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-violet-700 shadow-[0_0_15px_rgba(139,92,246,0.4)]"
+              >
+                <Download className="h-4 w-4" />
+                Cập nhật ngay
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  sessionStorage.setItem("dismissedVersion", updateAvailable.version);
+                  setShowUpdatePopup(false);
+                }}
+                className="flex-1 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-white/70 hover:bg-white/10 hover:text-white transition"
+              >
+                Để sau
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem("skippedVersion", updateAvailable.version);
+                  setUpdateAvailable(null);
+                  setShowUpdatePopup(false);
+                }}
+                className="flex-1 rounded-full border border-red-500/20 bg-red-500/5 px-5 py-3 text-sm font-semibold text-red-300 hover:bg-red-500/10 hover:border-red-500/30 transition"
+                title="Sẽ không thông báo lại phiên bản này nữa"
+              >
+                Bỏ qua bản này
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
       {imagePreview && (
