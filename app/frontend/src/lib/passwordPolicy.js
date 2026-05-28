@@ -32,4 +32,4 @@ export function isStrongPassword(password) {
   return getPasswordChecks(password).every((rule) => rule.valid);
 }
 
-export const passwordRuleMessage = "Mật khẩu phải dài tối thiểu 8 ký tự, có chữ hoa, chữ thường và số. Ví dụ: Datbn004.";
+export const passwordRuleMessage = "Mật khẩu phải dài tối thiểu 8 ký tự, có chữ hoa, chữ thường và số. Ví dụ: Example123.";

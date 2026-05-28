@@ -208,7 +208,7 @@ function PasswordField({ label, value, onChange }) {
 function PasswordChecklist({ checks }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/7 px-4 py-3">
-      <p className="mb-2 text-xs font-medium text-white/58">Ví dụ hợp lệ: Datbn004</p>
+      <p className="mb-2 text-xs font-medium text-white/58">Ví dụ hợp lệ: Example123</p>
       <div className="grid gap-1.5 text-xs">
         {checks.map((check) => (
           <div key={check.id} className={check.valid ? "text-emerald-200" : "text-white/45"}>

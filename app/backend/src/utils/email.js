@@ -18,6 +18,28 @@ function createTransporter() {
   });
 }
 
+export async function sendRegistrationCodeEmail({ to, code }) {
+  const transporter = createTransporter();
+
+  await transporter.sendMail({
+    from: env.mail.from || env.mail.user,
+    to,
+    subject: "Mã xác nhận đăng ký tài khoản",
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; color: #111827;">
+        <h2 style="margin-bottom: 12px;">Xác nhận đăng ký tài khoản</h2>
+        <p>Xin chào,</p>
+        <p>Bạn đang đăng ký tài khoản mới trên Damess.</p>
+        <p>Nhập mã xác nhận dưới đây để tiếp tục đăng ký:</p>
+        <div style="margin: 28px 0; display: inline-block; padding: 14px 22px; border-radius: 16px; background: #111827; color: #ffffff; font-size: 28px; font-weight: 700; letter-spacing: 8px;">
+          ${code}
+        </div>
+        <p style="font-size: 13px; color: #6b7280;">Mã có hiệu lực trong 10 phút. Nếu bạn không yêu cầu đăng ký, vui lòng bỏ qua email này.</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendVerificationEmail({ to, fullName, token }) {
   const verificationUrl = `${env.frontendUrl}/verify-email?token=${token}`;
   const transporter = createTransporter();

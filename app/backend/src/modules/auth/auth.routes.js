@@ -1,11 +1,13 @@
 import { Router } from "express";
-import { changePassword, checkUsername, login, me, register, requestChangePasswordCode, requestForgotPasswordCode, resendVerificationEmail, resetForgotPassword, updateProfile, updateUsername, verifyChangePasswordCode, verifyEmail, verifyForgotPasswordCode } from "./auth.controller.js";
+import { changePassword, checkUsername, login, me, register, requestChangePasswordCode, requestForgotPasswordCode, resendVerificationEmail, resetForgotPassword, updateProfile, updateUsername, verifyChangePasswordCode, verifyEmail, verifyForgotPasswordCode, requestRegisterCode, verifyRegisterCode } from "./auth.controller.js";
 import { requireAuth } from "../../middlewares/auth.middleware.js";
 
 export const authRouter = Router();
 
 authRouter.post("/login", login);
 authRouter.post("/register", register);
+authRouter.post("/register/code", requestRegisterCode);
+authRouter.post("/register/verify-code", verifyRegisterCode);
 authRouter.get("/verify-email", verifyEmail);
 authRouter.post("/resend-verification", resendVerificationEmail);
 authRouter.post("/forgot-password/code", requestForgotPasswordCode);

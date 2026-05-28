@@ -4,13 +4,75 @@ import jwt from "jsonwebtoken";
 import { env } from "../../config/env.js";
 import { prisma } from "../../config/prisma.js";
 import { ok } from "../../utils/api-response.js";
-import { sendPasswordChangeCodeEmail, sendPasswordResetCodeEmail, sendVerificationEmail } from "../../utils/email.js";
+import { sendPasswordChangeCodeEmail, sendPasswordResetCodeEmail, sendVerificationEmail, sendRegistrationCodeEmail } from "../../utils/email.js";
 import { AppError } from "../../utils/errors.js";
 import { createUniqueUsername, normalizeUsername } from "../../utils/username.js";
 
 const passwordChangeCodes = new Map();
 const PASSWORD_CHANGE_CODE_TTL_MS = 10 * 60 * 1000;
 const PASSWORD_RESET_CODE_TTL_MS = 10 * 60 * 1000;
+
+const registrationCodes = new Map();
+const REGISTRATION_CODE_TTL_MS = 10 * 60 * 1000;
+
+function clearRegistrationCode(email) {
+  const key = String(email || "").trim().toLowerCase();
+  const storedCode = registrationCodes.get(key);
+
+  if (storedCode?.timeoutId) {
+    clearTimeout(storedCode.timeoutId);
+  }
+
+  registrationCodes.delete(key);
+}
+
+function storeRegistrationCode(email, codeHash) {
+  const key = String(email || "").trim().toLowerCase();
+  clearRegistrationCode(key);
+
+  const codeId = crypto.randomUUID();
+  const expiresAt = Date.now() + REGISTRATION_CODE_TTL_MS;
+  const timeoutId = setTimeout(() => {
+    const storedCode = registrationCodes.get(key);
+
+    if (storedCode?.codeId === codeId) {
+      registrationCodes.delete(key);
+    }
+  }, REGISTRATION_CODE_TTL_MS);
+
+  timeoutId.unref?.();
+
+  registrationCodes.set(key, {
+    codeId,
+    codeHash,
+    expiresAt,
+    timeoutId,
+  });
+}
+
+async function assertValidRegistrationCode(email, verificationCode) {
+  if (!verificationCode) {
+    throw new AppError("Mã xác nhận là bắt buộc", 422);
+  }
+
+  if (!/^\d{6}$/.test(verificationCode)) {
+    throw new AppError("Mã xác nhận phải gồm 6 chữ số", 422);
+  }
+
+  const key = String(email || "").trim().toLowerCase();
+  const storedCode = registrationCodes.get(key);
+
+  if (!storedCode || storedCode.expiresAt <= Date.now()) {
+    clearRegistrationCode(key);
+    throw new AppError("Mã xác nhận không tồn tại hoặc đã hết hạn", 400);
+  }
+
+  const codeMatched = await bcrypt.compare(verificationCode, storedCode.codeHash);
+
+  if (!codeMatched) {
+    throw new AppError("Mã xác nhận không đúng", 400);
+  }
+}
 
 function sanitizeUser(user) {
   const { passwordHash, emailVerificationToken, passwordResetCodeHash, passwordResetExpiresAt, ...safeUser } = user;
@@ -34,7 +96,7 @@ function assertStrongPassword(password, fieldName = "Mật khẩu") {
   }
 
   if (password.length < 8 || !/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
-    throw new AppError(`${fieldName} phải dài tối thiểu 8 ký tự, có chữ hoa, chữ thường và số. Ví dụ: Datbn004.`, 422);
+    throw new AppError(`${fieldName} phải dài tối thiểu 8 ký tự, có chữ hoa, chữ thường và số. Ví dụ: Example123.`, 422);
   }
 }
 
@@ -200,24 +262,88 @@ export async function login(req, res, next) {
   }
 }
 
-export async function register(req, res, next) {
+export async function requestRegisterCode(req, res, next) {
   try {
-    const { fullName, email, password, phone } = req.body;
+    const { email } = req.body;
     const normalizedEmail = normalizeEmail(email);
-    const trimmedFullName = String(fullName || "").trim();
 
-    if (!trimmedFullName || !normalizedEmail || !password) {
-      throw new AppError("Họ tên, email và mật khẩu là bắt buộc", 422);
+    if (!normalizedEmail) {
+      throw new AppError("Email là bắt buộc", 422);
     }
-
-    assertStrongPassword(password);
 
     const existed = await prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
 
     if (existed) {
+      throw new AppError("Email này đã được đăng ký trong hệ thống", 409);
+    }
+
+    const code = createSixDigitCode();
+    const codeHash = await bcrypt.hash(code, 10);
+
+    storeRegistrationCode(normalizedEmail, codeHash);
+
+    await sendRegistrationCodeEmail({
+      to: normalizedEmail,
+      code,
+    });
+
+    return ok(res, null, "Đã gửi mã xác nhận 6 số tới email của bạn.");
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function verifyRegisterCode(req, res, next) {
+  try {
+    const { email, verificationCode } = req.body;
+    const normalizedEmail = normalizeEmail(email);
+
+    await assertValidRegistrationCode(normalizedEmail, verificationCode);
+
+    return ok(res, null, "Mã xác nhận hợp lệ.");
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function register(req, res, next) {
+  try {
+    const { fullName, email, username, password, verificationCode } = req.body;
+    const normalizedEmail = normalizeEmail(email);
+    const trimmedFullName = String(fullName || "").trim();
+    const normalizedUsername = normalizeUsername(username);
+
+    if (!trimmedFullName || !normalizedEmail || !password) {
+      throw new AppError("Họ tên, email và mật khẩu là bắt buộc", 422);
+    }
+
+    if (!normalizedUsername) {
+      throw new AppError("Tên đăng nhập (username) là bắt buộc", 422);
+    }
+
+    if (normalizedUsername.length < 4) {
+      throw new AppError("Tên đăng nhập (username) phải từ 4 ký tự trở lên", 422);
+    }
+
+    assertStrongPassword(password);
+    await assertValidRegistrationCode(normalizedEmail, verificationCode);
+
+    const emailExisted = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+
+    if (emailExisted) {
       throw new AppError("Email đã được sử dụng", 409);
+    }
+
+    const usernameExisted = await prisma.user.findUnique({
+      where: { username: normalizedUsername },
+    });
+
+    if (usernameExisted) {
+      throw new AppError("Tên đăng nhập (username) đã được sử dụng", 409);
     }
 
     const requesterRole = await prisma.role.findUnique({
@@ -229,18 +355,14 @@ export async function register(req, res, next) {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const verification = createEmailVerification();
-    const username = await createUniqueUsername({ fullName: trimmedFullName, email: normalizedEmail });
     const user = await prisma.user.create({
       data: {
         fullName: trimmedFullName,
-        username,
+        username: normalizedUsername,
         email: normalizedEmail,
         passwordHash,
-        phone,
         roleId: requesterRole.id,
-        emailVerificationToken: verification.token,
-        emailVerificationExpiresAt: verification.expiresAt,
+        emailVerifiedAt: new Date(),
       },
       include: {
         role: true,
@@ -248,13 +370,16 @@ export async function register(req, res, next) {
       },
     });
 
-    await sendVerificationEmail({
-      to: user.email,
-      fullName: user.fullName,
-      token: verification.token,
+    clearRegistrationCode(normalizedEmail);
+
+    const token = jwt.sign({ userId: user.id, role: user.role.code }, env.jwtSecret, {
+      expiresIn: env.jwtExpiresIn,
     });
 
-    return ok(res, sanitizeUser(user), "Đăng ký thành công. Vui lòng kiểm tra email để xác thực tài khoản.");
+    return ok(res, {
+      token,
+      user: sanitizeUser(user),
+    }, "Đăng ký tài khoản thành công.");
   } catch (error) {
     next(error);
   }
