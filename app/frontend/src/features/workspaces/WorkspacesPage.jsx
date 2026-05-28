@@ -1045,7 +1045,6 @@ export function WorkspacesPage() {
           userSettingsOpen={userSettingsOpen}
           unreadMessageCount={unreadMessageCount}
           chatOpen={friendsOpen}
-          updateAvailable={updateAvailable}
           onSelect={(workspaceId) => {
             setSelectedId((currentId) => (currentId === workspaceId ? null : workspaceId));
             setActiveWorkspaceView("overview");
@@ -1127,6 +1126,7 @@ export function WorkspacesPage() {
             notifications={notifications}
             unreadCount={unreadCount}
             notificationOpen={notificationOpen}
+            updateAvailable={updateAvailable}
             onToggleNotifications={() => {
               setNotificationOpen((open) => !open);
               setWorkspaceMenu(null);
@@ -1313,7 +1313,6 @@ function WorkspaceRail({
   submittingUsername,
   unreadMessageCount,
   chatOpen,
-  updateAvailable,
   onSelect,
   onWorkspaceContext,
   onOpenFriends,
@@ -1358,28 +1357,6 @@ function WorkspaceRail({
           </span>
         )}
       </button>
-
-      {updateAvailable && (
-        <button
-          type="button"
-          onClick={() => {
-            if (window.electronAPI) {
-              window.electronAPI.startUpdate(
-                updateAvailable.downloadUrl,
-                updateAvailable.version.replace("v", "")
-              );
-            }
-          }}
-          className="relative mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-500/50 bg-violet-600/20 text-[#a7f3d0] transition hover:bg-violet-600/35 shadow-[0_0_15px_rgba(139,92,246,0.6)] animate-pulse"
-          title={`Có bản mới: ${updateAvailable.version}`}
-        >
-          <Download className="h-5 w-5 animate-bounce" />
-          <span className="absolute -top-1 -right-1 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-          </span>
-        </button>
-      )}
 
       <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-y-auto">
         {workspaces.map((workspace) => (
@@ -1945,6 +1922,7 @@ function WorkspaceTopbar({
   onMarkRead,
   onMarkAllRead,
   onSearchResult,
+  updateAvailable,
 }) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
@@ -2016,7 +1994,7 @@ function WorkspaceTopbar({
   }
 
   return (
-    <header className="flex h-[72px] items-center justify-between gap-4 border-b border-white/10 bg-[#2a0631]/80 px-5">
+    <header className={`flex h-[72px] items-center justify-between gap-4 border-b bg-[#2a0631]/80 px-5 transition-all duration-500 ${updateAvailable ? "border-violet-500 shadow-[0_4px_25px_rgba(139,92,246,0.3)]" : "border-white/10"}`}>
       <div className="hidden w-10 shrink-0 md:block" />
       <div className="relative hidden min-w-0 max-w-2xl flex-1 md:block" onMouseDown={(event) => event.stopPropagation()}>
         <div className="flex items-center gap-3 rounded-xl border border-white/12 bg-white/12 px-4 py-2.5 text-sm text-white/55 focus-within:border-white/35 focus-within:bg-white/15">
@@ -2068,6 +2046,24 @@ function WorkspaceTopbar({
         )}
       </div>
       <div className="flex items-center gap-2">
+        {updateAvailable && (
+          <button
+            type="button"
+            onClick={() => {
+              if (window.electronAPI) {
+                window.electronAPI.startUpdate(
+                  updateAvailable.downloadUrl,
+                  updateAvailable.version.replace("v", "")
+                );
+              }
+            }}
+            className="flex items-center gap-2 rounded-full border border-violet-500/40 bg-violet-600/20 px-4 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-600/30 hover:border-violet-400 transition-all shadow-[0_0_12px_rgba(139,92,246,0.35)] animate-pulse mr-2"
+            title={`Có bản mới: ${updateAvailable.version}`}
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>Có bản mới</span>
+          </button>
+        )}
         <div className="relative" onMouseDown={(event) => event.stopPropagation()}>
           <button
             type="button"
