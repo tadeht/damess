@@ -302,7 +302,7 @@ export function HomePage() {
                 <ArrowUpRight className="h-5 w-5" />
               </PortalLink>
               <a
-                href={(import.meta.env.VITE_API_URL || "http://localhost:5000/api").replace(/\/api\/?$/, "") + "/downloads/Damess-Desktop.zip"}
+                href="https://github.com/tadeht/damess/releases/download/v1.0.0/Damess-Desktop.zip"
                 download
                 className="liquid-glass-strong inline-flex cursor-pointer items-center gap-2 rounded-full px-8 py-5 text-base text-white transition hover:scale-[1.03]"
               >
