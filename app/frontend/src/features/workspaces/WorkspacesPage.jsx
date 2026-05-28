@@ -11,6 +11,7 @@ import {
   Check,
   Clock,
   Copy,
+  Download,
   FileText,
   Hash,
   Image,
@@ -125,6 +126,29 @@ export function WorkspacesPage() {
   const chatFromUrl = useMemo(() => Number(new URLSearchParams(location.search).get("chat") || 0), [location.search]);
   const selectedWorkspace = workspaces.find((workspace) => workspace.id === selectedId) || null;
   const unreadMessageCount = friendsData.friends.reduce((total, item) => total + (item.unreadCount || 0), 0);
+  const [updateAvailable, setUpdateAvailable] = useState(null);
+
+  useEffect(() => {
+    const isDesktop = window.location.protocol === "file:" || Boolean(window.electronAPI);
+    if (!isDesktop) return;
+
+    const currentVersion = "0.9.0"; // Simulated version
+    fetch("https://api.github.com/repos/tadeht/damess/releases/latest")
+      .then((res) => res.json())
+      .then((release) => {
+        const latestVersion = release.tag_name;
+        if (latestVersion && latestVersion !== `v${currentVersion}`) {
+          const asset = release.assets?.find((a) => a.name.endsWith(".zip") || a.name.includes("Desktop"));
+          if (asset) {
+            setUpdateAvailable({
+              version: latestVersion,
+              downloadUrl: asset.browser_download_url,
+            });
+          }
+        }
+      })
+      .catch((err) => console.error("Error checking updates", err));
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -1021,6 +1045,7 @@ export function WorkspacesPage() {
           userSettingsOpen={userSettingsOpen}
           unreadMessageCount={unreadMessageCount}
           chatOpen={friendsOpen}
+          updateAvailable={updateAvailable}
           onSelect={(workspaceId) => {
             setSelectedId((currentId) => (currentId === workspaceId ? null : workspaceId));
             setActiveWorkspaceView("overview");
@@ -1288,6 +1313,7 @@ function WorkspaceRail({
   submittingUsername,
   unreadMessageCount,
   chatOpen,
+  updateAvailable,
   onSelect,
   onWorkspaceContext,
   onOpenFriends,
@@ -1332,6 +1358,28 @@ function WorkspaceRail({
           </span>
         )}
       </button>
+
+      {updateAvailable && (
+        <button
+          type="button"
+          onClick={() => {
+            if (window.electronAPI) {
+              window.electronAPI.startUpdate(
+                updateAvailable.downloadUrl,
+                updateAvailable.version.replace("v", "")
+              );
+            }
+          }}
+          className="relative mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-500/50 bg-violet-600/20 text-[#a7f3d0] transition hover:bg-violet-600/35 shadow-[0_0_15px_rgba(139,92,246,0.6)] animate-pulse"
+          title={`Có bản mới: ${updateAvailable.version}`}
+        >
+          <Download className="h-5 w-5 animate-bounce" />
+          <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+          </span>
+        </button>
+      )}
 
       <div className="flex min-h-0 flex-1 flex-col items-center gap-3 overflow-y-auto">
         {workspaces.map((workspace) => (

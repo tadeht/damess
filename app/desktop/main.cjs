@@ -1,7 +1,11 @@
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
-const { app, BrowserWindow, shell, dialog } = require("electron");
+const { app, BrowserWindow, shell, dialog, ipcMain } = require("electron");
+
+ipcMain.on("start-update", (event, data) => {
+  startUpdateProcess(data.url, data.version, BrowserWindow.fromWebContents(event.sender));
+});
 
 function getFrontendIndexPath() {
   const packagedPath = path.join(process.resourcesPath, "frontend", "dist", "index.html");
@@ -197,6 +201,7 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
+      preload: path.join(__dirname, "preload.js")
     },
   });
 
