@@ -2061,7 +2061,7 @@ function WorkspaceTopbar({
             title={`Có bản mới: ${updateAvailable.version}`}
           >
             <Download className="h-3.5 w-3.5" />
-            <span>Có bản mới</span>
+            <span>Cập nhật {updateAvailable.version}</span>
           </button>
         )}
         <div className="relative" onMouseDown={(event) => event.stopPropagation()}>
