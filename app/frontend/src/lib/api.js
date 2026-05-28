@@ -1,6 +1,14 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+let API_URL = "http://localhost:5000/api";
+
+if (window.location.protocol === "file:") {
+  // Bản Desktop (Electron) kết nối tới server online để đồng bộ
+  API_URL = "https://damess.onrender.com/api";
+} else {
+  // Bản Web chạy ở đâu thì gọi API ở server đó
+  API_URL = `${window.location.origin}/api`;
+}
 
 export const api = axios.create({
   baseURL: API_URL,

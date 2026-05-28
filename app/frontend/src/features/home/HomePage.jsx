@@ -27,6 +27,7 @@ const navLinks = [
   { label: "Phân quyền", href: "#roles" },
   { label: "Quy trình", href: "#workflow" },
   { label: "Báo cáo", href: "#reports" },
+  { label: "Tải xuống", href: "#download" },
 ];
 
 const organizationCards = [
@@ -292,7 +293,7 @@ export function HomePage() {
               theo dõi toàn bộ tiến độ xử lý trong một không gian tập trung.
             </p>
 
-            <div className="animate-fade-rise-delay-2 mt-12 flex flex-col items-center gap-3 sm:flex-row">
+            <div className="animate-fade-rise-delay-2 mt-12 flex flex-col items-center gap-4 sm:flex-row">
               <PortalLink
                 to={primaryPath}
                 label={primaryLabel}
@@ -302,17 +303,8 @@ export function HomePage() {
                 <ArrowUpRight className="h-5 w-5" />
               </PortalLink>
               <a
-                href="https://github.com/tadeht/damess/releases/download/v1.0.0/Damess-Desktop.zip"
-                download
-                className="liquid-glass-strong inline-flex cursor-pointer items-center gap-2 rounded-full px-8 py-5 text-base text-white transition hover:scale-[1.03]"
-              >
-                <Monitor className="h-5 w-5" />
-                Tải ứng dụng Desktop
-                <Download className="h-4 w-4 opacity-60" />
-              </a>
-              <a
                 href="#organization"
-                className="liquid-glass inline-flex cursor-pointer items-center gap-2 rounded-full px-8 py-5 text-base text-foreground transition hover:scale-[1.03]"
+                className="liquid-glass inline-flex cursor-pointer items-center gap-2 rounded-full px-10 py-5 text-base text-foreground transition hover:scale-[1.03]"
               >
                 Xem nội dung
                 <ArrowDown className="h-5 w-5" />
@@ -456,6 +448,112 @@ export function HomePage() {
             </motion.div>
           </div>
         </motion.div>
+      </motion.section>
+
+      <motion.section
+        id="download"
+        className="relative min-h-[80vh] overflow-hidden bg-black px-6 py-32 flex items-center"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.15 }}
+        variants={revealGroup}
+      >
+        <div className="home-bg-image home-bg-image--ambient absolute inset-0 z-0 h-full w-full opacity-60" />
+        <div className="absolute inset-0 z-0 bg-black/70" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-0 h-48 bg-gradient-to-b from-black to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-48 bg-gradient-to-t from-black to-transparent" />
+
+        <div className="relative z-10 mx-auto max-w-7xl w-full">
+          <div className="grid gap-16 lg:grid-cols-12 items-center">
+            {/* Left side: Premium description */}
+            <div className="lg:col-span-7 space-y-8 text-left">
+              <motion.div variants={revealItem}>
+                <span className="liquid-glass border border-white/10 rounded-full px-4 py-1.5 text-xs font-semibold text-white/80">
+                  Ứng dụng Máy tính
+                </span>
+              </motion.div>
+              
+              <motion.h2 
+                variants={revealItem}
+                className="text-4xl font-semibold leading-tight text-white md:text-5xl lg:text-6xl"
+                style={{ fontFamily: "'Instrument Serif', serif", letterSpacing: "-1px" }}
+              >
+                Trải nghiệm Damess <br className="hidden md:inline" />
+                <span className="text-muted-foreground italic">mượt mà, độc lập</span> trên Desktop.
+              </motion.h2>
+              
+              <motion.p variants={revealItem} className="text-base md:text-lg leading-relaxed text-white/50 max-w-xl">
+                Tải ứng dụng máy tính để tối ưu quy trình xử lý yêu cầu. Giao diện chạy độc lập giúp tăng độ tập trung, khởi động tức thì và không bị phụ thuộc vào các tab của trình duyệt web.
+              </motion.p>
+              
+              <motion.ul variants={revealGroup} className="space-y-4 text-sm text-white/70">
+                <motion.li variants={revealItem} className="flex items-center gap-3.5">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 font-bold">✓</span>
+                  <span>Khởi động trực tiếp từ Desktop, hỗ trợ chạy ẩn dưới thanh Taskbar.</span>
+                </motion.li>
+                <motion.li variants={revealItem} className="flex items-center gap-3.5">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 font-bold">✓</span>
+                  <span>Tự động ghi nhớ phiên đăng nhập và đồng bộ tức thời với cơ sở dữ liệu đám mây.</span>
+                </motion.li>
+                <motion.li variants={revealItem} className="flex items-center gap-3.5">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 font-bold">✓</span>
+                  <span>Đóng gói Portable gọn nhẹ, chạy ngay không cần cài đặt phức tạp.</span>
+                </motion.li>
+              </motion.ul>
+            </div>
+
+            {/* Right side: Premium Download Card */}
+            <div className="lg:col-span-5 flex justify-center lg:justify-end">
+              <motion.div 
+                variants={revealItem} 
+                className="group relative w-full max-w-md"
+              >
+                {/* Glowing Aura backdrop */}
+                <div className="absolute -inset-1 rounded-[32px] bg-gradient-to-r from-[#5865f2] to-[#8b5cf6] opacity-30 blur-2xl transition duration-1000 group-hover:opacity-50 group-hover:duration-200" />
+                
+                <div className="liquid-glass relative rounded-[32px] p-8 md:p-10 border border-white/10 shadow-2xl bg-black/40 backdrop-blur-2xl">
+                  <div className="flex items-center gap-5 mb-8">
+                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#5865f2]/10 border border-[#5865f2]/20 text-[#5865f2] shadow-inner">
+                      <Monitor className="h-7 w-7" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-white tracking-wide">Damess cho Windows</h3>
+                      <p className="text-xs text-white/40 mt-1">Phiên bản chính thức v1.0.0</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 mb-8 border-y border-white/8 py-6 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-white/40">Dung lượng file</span>
+                      <span className="text-white/80 font-medium">~110 MB</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-white/40">Định dạng gói</span>
+                      <span className="text-white/80 font-medium">ZIP (Chạy trực tiếp)</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-white/40">Hệ điều hành</span>
+                      <span className="text-white/80 font-medium">Windows 10 / 11 (64-bit)</span>
+                    </div>
+                  </div>
+
+                  <a
+                    href="https://github.com/tadeht/damess/releases/download/v1.0.0/Damess-Desktop.zip"
+                    download
+                    className="liquid-glass-strong w-full inline-flex cursor-pointer items-center justify-center gap-3 rounded-full py-4 px-6 text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(88,101,242,0.4)]"
+                  >
+                    <Download className="h-5 w-5" />
+                    Tải xuống bản Desktop (ZIP)
+                  </a>
+
+                  <p className="mt-5 text-center text-xs text-white/30 leading-relaxed">
+                    Tải về, giải nén thư mục và nhấp đúp vào tệp <strong className="text-white/50">Damess-Desktop.exe</strong> để mở ứng dụng.
+                  </p>
+                </div>
+              </motion.div>
+            </div>
+          </div>
+        </div>
       </motion.section>
     </main>
   );
