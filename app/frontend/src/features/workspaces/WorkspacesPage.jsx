@@ -139,9 +139,6 @@ export function WorkspacesPage() {
       .then((release) => {
         const latestVersion = release.tag_name;
         if (latestVersion && latestVersion !== `v${currentVersion}`) {
-          const skippedVersion = localStorage.getItem("skippedVersion");
-          if (latestVersion === skippedVersion) return; // Skipped this version
-
           const asset = release.assets?.find((a) => a.name.endsWith(".zip") || a.name.includes("Desktop"));
           if (asset) {
             const updateInfo = {
@@ -150,8 +147,9 @@ export function WorkspacesPage() {
             };
             setUpdateAvailable(updateInfo);
 
+            const skippedVersion = localStorage.getItem("skippedVersion");
             const sessionDismissed = sessionStorage.getItem("dismissedVersion") === latestVersion;
-            if (!sessionDismissed) {
+            if (latestVersion !== skippedVersion && !sessionDismissed) {
               setShowUpdatePopup(true);
             }
           }
@@ -1363,7 +1361,6 @@ export function WorkspacesPage() {
                 type="button"
                 onClick={() => {
                   localStorage.setItem("skippedVersion", updateAvailable.version);
-                  setUpdateAvailable(null);
                   setShowUpdatePopup(false);
                 }}
                 className="flex-1 rounded-full border border-red-500/20 bg-red-500/5 px-5 py-3 text-sm font-semibold text-red-300 hover:bg-red-500/10 hover:border-red-500/30 transition"
