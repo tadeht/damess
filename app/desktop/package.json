@@ -1,6 +1,6 @@
 {
   "name": "he-thong-quan-ly-yeu-cau-desktop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Ứng dụng desktop cho Damess",
   "main": "main.cjs",
   "scripts": {

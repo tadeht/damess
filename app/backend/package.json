@@ -1,6 +1,6 @@
 {
   "name": "he-thong-quan-ly-yeu-cau-backend",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Backend API cho Damess",
   "main": "src/server.js",
   "type": "module",

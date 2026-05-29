@@ -25,6 +25,20 @@ export function AuthProvider({ children }) {
       .finally(() => setLoading(false));
   }, []);
 
+  // Heartbeat ngầm mỗi 30 giây để duy trì trạng thái Online (Redis Bitmap)
+  useEffect(() => {
+    if (!user) return;
+    
+    // Bắn nhịp tim ngay lần đầu
+    api.post("/users/heartbeat").catch(() => {});
+    
+    const interval = setInterval(() => {
+      api.post("/users/heartbeat").catch(() => {});
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [user]);
+
   async function login(identifier, password, remember = false) {
     const response = await api.post("/auth/login", { identifier, password });
     const { token, user: currentUser } = response.data.data;

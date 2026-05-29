@@ -3,6 +3,7 @@ import { ok } from "../../utils/api-response.js";
 import { AppError } from "../../utils/errors.js";
 import { normalizeUsername } from "../../utils/username.js";
 import { createUserNotification } from "../notifications/notification.service.js";
+import TrackingService from "../../lib/tracking.js";
 
 const PENDING = "PENDING";
 const ACCEPTED = "ACCEPTED";
@@ -13,6 +14,7 @@ const userSelect = {
   fullName: true,
   username: true,
   email: true,
+          avatarData: true,
 };
 
 function getFriendPair(userId, friendId) {
@@ -56,6 +58,14 @@ async function enrichFriendship(friendship, currentUserId) {
       },
     }),
   ]);
+
+  // Gắn trạng thái online từ TrackingService
+  const status = TrackingService.getStatus(friendId);
+  friendItem.friend = {
+    ...friendItem.friend,
+    isOnline: status.isOnline,
+    lastActiveAt: status.lastActiveAt,
+  };
 
   return {
     ...friendItem,
@@ -121,14 +131,26 @@ export async function listFriends(req, res, next) {
 
 export async function findUserByUsername(req, res, next) {
   try {
-    const username = normalizeUsername(req.query.username);
+    const rawInput = req.query.username;
 
-    if (!username) {
-      throw new AppError("Username là bắt buộc", 422);
+    if (!rawInput) {
+      throw new AppError("Từ khóa tìm kiếm là bắt buộc", 422);
     }
 
-    const user = await prisma.user.findUnique({
-      where: { username },
+    const username = normalizeUsername(rawInput);
+    const isIdSearch = /^\\d+$/.test(rawInput);
+
+    let whereClause;
+    if (isIdSearch) {
+      whereClause = { id: parseInt(rawInput, 10) };
+    } else if (rawInput.includes('@')) {
+      whereClause = { email: rawInput.trim().toLowerCase() };
+    } else {
+      whereClause = { username };
+    }
+
+    const user = await prisma.user.findFirst({
+      where: whereClause,
       select: userSelect,
     });
 

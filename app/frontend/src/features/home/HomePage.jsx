@@ -535,7 +535,7 @@ export function HomePage() {
                   </div>
 
                   <a
-                    href="https://github.com/tadeht/damess/releases/download/v1.0.0/Damess-Desktop.zip"
+                    href="https://github.com/tadeht/damess/releases/download/v1.0.1/Damess-Desktop.zip"
                     download
                     className="liquid-glass-strong w-full inline-flex cursor-pointer items-center justify-center gap-3 rounded-full py-4 px-6 text-base font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(88,101,242,0.4)]"
                   >

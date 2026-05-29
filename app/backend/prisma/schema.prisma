@@ -48,6 +48,9 @@ model User {
   passwordResetCodeHash       String?                @map("password_reset_code_hash")
   passwordResetExpiresAt      DateTime?              @map("password_reset_expires_at")
   phone                       String?
+  avatarName                  String?                @map("avatar_name")
+  avatarMime                  String?                @map("avatar_mime")
+  avatarData                  String?                @map("avatar_data")
   roleId                      Int                    @map("role_id")
   role                        Role                   @relation(fields: [roleId], references: [id])
   departmentId                Int?                   @map("department_id")

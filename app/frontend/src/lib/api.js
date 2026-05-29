@@ -3,8 +3,11 @@ import axios from "axios";
 let API_URL = "http://localhost:5000/api";
 
 if (window.location.protocol === "file:") {
-  // Bản Desktop (Electron) kết nối tới server online để đồng bộ
+  // Bản Desktop (Electron) kết nối tới server online đồng bộ
   API_URL = "https://damess.onrender.com/api";
+} else if (import.meta.env && import.meta.env.DEV) {
+  // Development mode
+  API_URL = "http://localhost:5000/api";
 } else {
   // Bản Web chạy ở đâu thì gọi API ở server đó
   API_URL = `${window.location.origin}/api`;

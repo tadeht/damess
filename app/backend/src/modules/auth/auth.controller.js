@@ -732,3 +732,24 @@ export async function updateProfile(req, res, next) {
     next(error);
   }
 }
+
+export async function updateAvatar(req, res, next) {
+  try {
+    const { avatarName, avatarMime, avatarData } = req.body;
+    
+    // Optional: add validation for file size if needed, but we trust the frontend here for simplicity
+    
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { avatarName, avatarMime, avatarData },
+      include: {
+        role: true,
+        department: true,
+      },
+    });
+
+    return ok(res, sanitizeUser(user), "Cập nhật ảnh đại diện thành công");
+  } catch (error) {
+    next(error);
+  }
+}

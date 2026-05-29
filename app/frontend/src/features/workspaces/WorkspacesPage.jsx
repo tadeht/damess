@@ -19,6 +19,8 @@ import {
   Link2,
   LogOut,
   MessageCircle,
+  MessageSquare,
+  PanelRight,
   Plus,
   Search,
   Send,
@@ -28,6 +30,7 @@ import {
   Paperclip,
   Ticket,
   Trash2,
+  User,
   UserPlus,
   Users,
   Volume2,
@@ -98,6 +101,7 @@ export function WorkspacesPage() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(true);
   const [friendsOpen, setFriendsOpen] = useState(false);
   const [friendsData, setFriendsData] = useState({ friends: [], incomingRequests: [], outgoingRequests: [] });
   const [friendListSearch, setFriendListSearch] = useState("");
@@ -113,6 +117,16 @@ export function WorkspacesPage() {
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [chatLoading, setChatLoading] = useState(false);
+  // Workspace channel chat states
+  const [channels, setChannels] = useState([]);
+  const [selectedChannel, setSelectedChannel] = useState(null);
+  const [channelMessages, setChannelMessages] = useState([]);
+  const [channelInput, setChannelInput] = useState("");
+  const [channelLoading, setChannelLoading] = useState(false);
+  const [channelModalOpen, setChannelModalOpen] = useState(false);
+  const [channelForm, setChannelForm] = useState({ name: "", topic: "" });
+  const [editingChannel, setEditingChannel] = useState(null);
+  const [channelContextMenu, setChannelContextMenu] = useState(null);
   const createSubmittingRef = useRef(false);
   const openingChatIdRef = useRef(null);
   const forceScrollToLatestRef = useRef(false);
@@ -472,6 +486,92 @@ export function WorkspacesPage() {
     } finally {
       openingChatIdRef.current = null;
     }
+  }
+
+  // ─── Workspace Channel Chat ───────────────────────────────────────────
+  async function loadChannels(workspaceId) {
+    try {
+      const res = await api.get(`/workspaces/${workspaceId}/channels`);
+      setChannels(res.data.data || []);
+      return res.data.data || [];
+    } catch { setChannels([]); return []; }
+  }
+
+  async function loadChannelMessages(channelId, workspaceId) {
+    if (!channelId || !workspaceId) return;
+    setChannelLoading(true);
+    try {
+      const res = await api.get(`/workspaces/${workspaceId}/channels/${channelId}/messages`);
+      setChannelMessages(res.data.data || []);
+      await api.post(`/workspaces/${workspaceId}/channels/${channelId}/read`).catch(() => {});
+    } catch { setChannelMessages([]); }
+    finally { setChannelLoading(false); }
+  }
+
+  async function sendChannelMessage(channelId, workspaceId) {
+    const content = channelInput.trim();
+    if (!content || !channelId || !workspaceId) return;
+    setChannelInput("");
+    try {
+      await api.post(`/workspaces/${workspaceId}/channels/${channelId}/messages`, { content });
+      await loadChannelMessages(channelId, workspaceId);
+      await loadChannels(workspaceId);
+    } catch (err) {
+      setMessage(getErrorMessage(err));
+    }
+  }
+
+  async function selectChannel(channel) {
+    if (!channel || !selectedWorkspace) return;
+    setSelectedChannel(channel);
+    await loadChannelMessages(channel.id, selectedWorkspace.id);
+  }
+
+  async function createOrUpdateChannel() {
+    if (!selectedWorkspace) return;
+    const name = channelForm.name.trim();
+    if (!name) return;
+    try {
+      if (editingChannel) {
+        await api.patch(`/workspaces/${selectedWorkspace.id}/channels/${editingChannel.id}`, { name, topic: channelForm.topic.trim() || null });
+        setMessage("Đã cập nhật kênh.");
+      } else {
+        await api.post(`/workspaces/${selectedWorkspace.id}/channels`, { name, topic: channelForm.topic.trim() || null });
+        setMessage("Đã tạo kênh mới.");
+      }
+      setChannelModalOpen(false);
+      setEditingChannel(null);
+      setChannelForm({ name: "", topic: "" });
+      const chs = await loadChannels(selectedWorkspace.id);
+      if (!editingChannel && chs.length > 0) {
+        const created = chs.find(c => c.name === name.toLowerCase().replace(/\s+/g, "-"));
+        if (created) selectChannel(created);
+      }
+    } catch (err) { setMessage(getErrorMessage(err)); }
+  }
+
+  async function deleteChannel(channelId) {
+    if (!selectedWorkspace) return;
+    try {
+      await api.delete(`/workspaces/${selectedWorkspace.id}/channels/${channelId}`);
+      setMessage("Đã xoá kênh.");
+      setChannelContextMenu(null);
+      if (selectedChannel?.id === channelId) setSelectedChannel(null);
+      await loadChannels(selectedWorkspace.id);
+    } catch (err) { setMessage(getErrorMessage(err)); }
+  }
+
+  function openCreateChannel() {
+    setEditingChannel(null);
+    setChannelForm({ name: "", topic: "" });
+    setChannelModalOpen(true);
+  }
+
+  function openEditChannel(channel) {
+    setEditingChannel(channel);
+    setChannelForm({ name: channel.name, topic: channel.topic || "" });
+    setChannelModalOpen(true);
+    setChannelContextMenu(null);
   }
 
   function closeActiveChat(options = {}) {
@@ -1051,7 +1151,7 @@ export function WorkspacesPage() {
     <div className="h-screen overflow-hidden bg-canvas font-body text-white">
       <AppBackground />
       {toast && <Toast type={toast.type} text={toast.text} />}
-      <div className="relative z-10 flex min-h-0" style={workspaceUiScaleStyle}>
+      <div className="relative z-10 flex h-full min-h-0 overflow-hidden" style={workspaceUiScaleStyle}>
         <WorkspaceRail
           workspaces={workspaces}
           selectedId={selectedWorkspace?.id}
@@ -1142,6 +1242,8 @@ export function WorkspacesPage() {
             unreadCount={unreadCount}
             notificationOpen={notificationOpen}
             updateAvailable={updateAvailable}
+            rightSidebarOpen={rightSidebarOpen}
+            onToggleRightSidebar={() => setRightSidebarOpen(prev => !prev)}
             onToggleNotifications={() => {
               setNotificationOpen((open) => !open);
               setWorkspaceMenu(null);
@@ -1171,6 +1273,7 @@ export function WorkspacesPage() {
               setActiveWorkspaceView(result.type === "request" ? "requests" : result.type === "project" ? "projects" : "overview");
             }}
           />
+          <div className="flex min-h-0 flex-1 overflow-hidden">
           <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-l border-white/10 bg-black/32">
             {!selectedWorkspace && (
             <div className="shrink-0 border-b border-white/10 px-6 py-3">
@@ -1193,7 +1296,7 @@ export function WorkspacesPage() {
             </div>
             )}
 
-            <div className={`min-h-0 flex-1 overflow-y-auto px-6 py-5 ${selectedWorkspace ? "" : "flex items-center justify-center"}`}>
+            <div className={`min-h-0 flex-1 ${activeWorkspaceView === "chat" ? "flex flex-col overflow-hidden" : "overflow-y-auto px-6 py-5"} ${selectedWorkspace ? "" : "flex items-center justify-center"}`}>
               {selectedWorkspace ? (
                 activeWorkspaceView === "projects" ? (
                   <WorkspaceProjects workspace={selectedWorkspace} user={user} />
@@ -1211,6 +1314,25 @@ export function WorkspacesPage() {
                   <WorkspaceOverview workspace={selectedWorkspace} requests={overviewRequests} activities={overviewActivities} loading={overviewLoading} />
                 ) : activeWorkspaceView === "requests" ? (
                   <WorkspaceRequests workspace={selectedWorkspace} user={user} requests={overviewRequests} loading={overviewLoading} onReload={loadWorkspaceOverview} onPreviewImage={setImagePreview} />
+                ) : activeWorkspaceView === "chat" ? (
+                  <WorkspaceChat
+                    workspace={selectedWorkspace}
+                    user={user}
+                    channels={channels}
+                    selectedChannel={selectedChannel}
+                    messages={channelMessages}
+                    input={channelInput}
+                    loading={channelLoading}
+                    onSelectChannel={selectChannel}
+                    onInputChange={setChannelInput}
+                    onSend={() => sendChannelMessage(selectedChannel?.id, selectedWorkspace?.id)}
+                    onLoadChannels={() => loadChannels(selectedWorkspace?.id)}
+                    onCreateChannel={openCreateChannel}
+                    onEditChannel={openEditChannel}
+                    onDeleteChannel={deleteChannel}
+                    contextMenu={channelContextMenu}
+                    setContextMenu={setChannelContextMenu}
+                  />
                 ) : activeWorkspaceView === "activity" ? (
                   <WorkspaceActivity activities={overviewActivities} loading={overviewLoading} />
                 ) : activeWorkspaceView === "settings" ? (
@@ -1225,6 +1347,16 @@ export function WorkspacesPage() {
               )}
             </div>
           </section>
+          {rightSidebarOpen && selectedWorkspace ? (
+            <WorkspaceRightSidebar workspace={selectedWorkspace} user={user} onDirectMessage={directMessageWorkspaceMember} onClose={() => setRightSidebarOpen(false)} />
+          ) : selectedWorkspace ? (
+            <div className="flex shrink-0 items-start border-l border-white/10 bg-[#1a1b1e] p-2">
+              <button type="button" onClick={() => setRightSidebarOpen(true)} className="flex h-8 w-8 items-center justify-center rounded-lg text-white/40 hover:bg-white/10 hover:text-white/70" title="Mở danh sách thành viên">
+                <PanelRight className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
+          </div>
         </main>
           </>
         )}
@@ -1375,6 +1507,35 @@ export function WorkspacesPage() {
       {imagePreview && (
         <ImagePreviewModal image={imagePreview} onClose={() => setImagePreview(null)} />
       )}
+      {channelModalOpen && (
+        <Modal title={editingChannel ? "Sửa thông tin kênh" : "Tạo kênh mới"} onClose={() => { setChannelModalOpen(false); setEditingChannel(null); }}>
+          <form onSubmit={(e) => { e.preventDefault(); createOrUpdateChannel(); }} className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-white/70">Tên kênh <span className="text-red-400">*</span></label>
+              <input
+                type="text"
+                required
+                value={channelForm.name}
+                onChange={(e) => setChannelForm({ ...channelForm, name: e.target.value.toLowerCase().replace(/\s+/g, "-") })}
+                className="w-full rounded-[22px] border border-white/15 bg-white/8 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-white/50"
+                placeholder="Ví dụ: thong-bao, thao-luan"
+              />
+              <p className="mt-1.5 text-xs text-white/40">Tên kênh viết thường, không dấu, dùng gạch ngang.</p>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-white/70">Chủ đề (tuỳ chọn)</label>
+              <textarea
+                value={channelForm.topic}
+                onChange={(e) => setChannelForm({ ...channelForm, topic: e.target.value })}
+                rows={2}
+                className="w-full resize-none rounded-[22px] border border-white/15 bg-white/8 px-4 py-3 text-sm text-white outline-none transition placeholder:text-white/30 focus:border-white/50"
+                placeholder="Thêm mô tả về kênh..."
+              />
+            </div>
+            <FormActions submitting={false} submitLabel={editingChannel ? "Cập nhật" : "Tạo kênh"} onCancel={() => { setChannelModalOpen(false); setEditingChannel(null); }} />
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -1488,7 +1649,10 @@ function WorkspaceRail({
         {userMenuOpen && (
           <div className="absolute bottom-0 left-14 z-40 w-72 rounded-2xl border border-white/12 bg-[#211327] p-3 shadow-2xl">
             <div className="rounded-xl bg-white/7 p-3">
-              <div className="text-sm font-semibold text-white">{user?.fullName}</div>
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold text-white">{user?.fullName}</div>
+                <div className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/50 font-mono">ID: {user?.id}</div>
+              </div>
               <div className="mt-1 truncate text-xs text-white/60">@{user?.username}</div>
               <div className="mt-1 truncate text-xs text-white/45">{user?.email}</div>
               <div className="mt-2 text-xs text-white/38">{user?.role?.name}</div>
@@ -1651,6 +1815,7 @@ function WorkspaceSidebar({ workspace, user, settingsOpen, onToggleSettings, onC
         )}
         <SidebarItem icon={Building2} label="Tổng quan" active={activeView === "overview"} onClick={() => onViewChange("overview")} />
         <SidebarItem icon={Users} label="Quản lý thành viên" active={activeView === "members"} onClick={() => onViewChange("members")} />
+        <SidebarItem icon={MessageSquare} label="Chat" active={activeView === "chat"} onClick={() => onViewChange("chat")} />
         <SidebarItem icon={FileText} label="Dự án" active={activeView === "projects"} onClick={() => onViewChange("projects")} />
         <SidebarItem icon={Hash} label="Yêu cầu" active={activeView === "requests"} onClick={() => onViewChange("requests")} />
         <SidebarItem icon={Bell} label="Hoạt động" active={activeView === "activity"} onClick={() => onViewChange("activity")} />
@@ -1835,11 +2000,17 @@ function FriendsPanel({
                     activeChat?.id === item.friend.id ? "border border-white/12 bg-white/14 text-white" : "bg-white/7 text-white"
                   }`}
                 >
-                  <div className={`flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold ${activeChat?.id === item.friend.id ? "bg-[#f5f7fb] text-black" : "bg-white/12 text-white"}`}>
+                  <div className={`relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${activeChat?.id === item.friend.id ? "bg-[#f5f7fb] text-black" : "bg-white/12 text-white"}`}>
                     {getWorkspaceInitials(item.friend.fullName)}
+                    <div className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#1a1b1e] ${item.friend.isOnline ? 'bg-green-500' : 'bg-gray-500'}`} />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold">{item.friend.fullName}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="truncate text-sm font-semibold">{item.friend.fullName}</div>
+                      {!item.friend.isOnline && item.friend.lastActiveAt && (
+                        <div className="shrink-0 text-[10px] text-white/30">{formatTimeAgo(item.friend.lastActiveAt)}</div>
+                      )}
+                    </div>
                     <div className={`truncate text-xs ${activeChat?.id === item.friend.id ? "text-white/55" : "text-white/42"}`}>
                       {formatLatestMessage(item.latestMessage, user?.id, item.friend.username)}
                     </div>
@@ -1861,12 +2032,20 @@ function FriendsPanel({
           <>
             <div className="border-b border-white/10 bg-black/18 p-4">
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/12 text-sm font-bold text-white">
+                <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/12 text-sm font-bold text-white">
                   {getWorkspaceInitials(activeChat.fullName)}
+                  <div className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-black/30 ${activeChat.isOnline ? 'bg-green-500' : 'bg-gray-500'}`} />
                 </div>
                 <div className="min-w-0">
                   <div className="truncate text-lg font-semibold text-white">{activeChat.fullName}</div>
-                  <div className="mt-1 truncate text-xs text-white/42">@{activeChat.username}</div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <div className="truncate text-xs text-white/42">@{activeChat.username}</div>
+                    {activeChat.isOnline ? (
+                      <div className="text-[10px] text-green-400">Đang hoạt động</div>
+                    ) : activeChat.lastActiveAt ? (
+                      <div className="text-[10px] text-white/30">{formatTimeAgo(activeChat.lastActiveAt)}</div>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2004,6 +2183,8 @@ function WorkspaceTopbar({
   onMarkAllRead,
   onSearchResult,
   updateAvailable,
+  rightSidebarOpen,
+  onToggleRightSidebar,
 }) {
   const [query, setQuery] = useState("");
   const [focused, setFocused] = useState(false);
@@ -6112,3 +6293,252 @@ function resolveNotificationPath(link) {
   }
 }
 
+function formatTimeAgo(timestamp) {
+  if (!timestamp) return "";
+  const diff = Date.now() - new Date(timestamp).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "Vừa mới";
+  if (minutes < 60) return `${minutes} phút trước`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} giờ trước`;
+  const days = Math.floor(hours / 24);
+  if (days > 7) return "Hơn 7 ngày";
+  return `${days} ngày trước`;
+}
+
+function WorkspaceRightSidebar({ workspace, user, onDirectMessage, onClose }) {
+  const onlineMembers = [];
+  const offlineMembers = [];
+
+  (workspace.members || []).forEach(member => {
+    const isOnline = member.userId === user?.id ? true : member.isOnline;
+    if (isOnline) {
+      onlineMembers.push({ ...member, _isOnline: true });
+    } else {
+      offlineMembers.push({ ...member, _isOnline: false });
+    }
+  });
+
+  return (
+    <aside className="relative z-10 flex w-60 shrink-0 flex-col overflow-y-auto border-l border-white/10 bg-[#1a1b1e] p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-xs font-bold uppercase text-white/60">Thành viên — {onlineMembers.length + offlineMembers.length}</h3>
+        <button type="button" onClick={onClose} className="flex h-6 w-6 items-center justify-center rounded-md text-white/40 hover:bg-white/10 hover:text-white/70" title="Đóng/Mở sidebar">
+          <PanelRight className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <div className="mb-4">
+        <h3 className="mb-2 text-xs font-bold uppercase text-white/50">Online — {onlineMembers.length}</h3>
+        <div className="space-y-1">
+          {onlineMembers.map(member => (
+            <SidebarMember key={member.id} member={member} isOnline currentUserId={user?.id} onDirectMessage={onDirectMessage} />
+          ))}
+        </div>
+      </div>
+      <div>
+        <h3 className="mb-2 text-xs font-bold uppercase text-white/50">Offline — {offlineMembers.length}</h3>
+        <div className="space-y-1">
+          {offlineMembers.map(member => (
+            <SidebarMember key={member.id} member={member} isOnline={false} currentUserId={user?.id} onDirectMessage={onDirectMessage} />
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function SidebarMember({ member, isOnline, currentUserId, onDirectMessage }) {
+  const [popupOpen, setPopupOpen] = useState(false);
+  const u = member.user;
+
+  return (
+    <div className="relative">
+      <div
+        className="group flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 hover:bg-white/5"
+        onClick={() => setPopupOpen(!popupOpen)}
+      >
+        <div className="relative h-8 w-8 shrink-0">
+          <div className="flex h-full w-full items-center justify-center rounded-full bg-white/10 text-xs font-semibold text-white">
+            {getWorkspaceInitials(u?.fullName || "U")}
+          </div>
+          <div className={`absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#1a1b1e] ${isOnline ? 'bg-green-500' : 'bg-gray-500'}`} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-medium text-white/80 group-hover:text-white">
+            {u?.fullName || u?.username}
+          </div>
+          <div className="flex items-center gap-2">
+            {member.role === "ADMIN" && (
+              <div className="text-[10px] uppercase text-amber-500/80">Admin</div>
+            )}
+            {!isOnline && member.lastActiveAt && (
+              <div className="text-[10px] text-white/40 truncate">{formatTimeAgo(member.lastActiveAt)}</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {popupOpen && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setPopupOpen(false)} />
+          <div className="absolute right-full top-0 z-50 mr-2 w-48 rounded-xl border border-white/10 bg-[#1e1f22] p-1 shadow-xl">
+            <div className="px-3 py-2 border-b border-white/10 mb-1">
+              <div className="flex items-center justify-between">
+                <div className="font-semibold text-white truncate">{u?.fullName}</div>
+                <div className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-white/50 font-mono">ID: {u?.id}</div>
+              </div>
+              <div className="text-xs text-white/50 truncate">@{u?.username}</div>
+            </div>
+            {member.userId !== currentUserId && (
+              <button
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-white/70 hover:bg-white/10 hover:text-white"
+                onClick={() => { setPopupOpen(false); onDirectMessage?.(member); }}
+              >
+                <MessageSquare className="h-4 w-4" /> Nhắn tin
+              </button>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function WorkspaceChat({ workspace, user, channels, selectedChannel, messages, input, loading, onSelectChannel, onInputChange, onSend, onLoadChannels, onCreateChannel, onEditChannel, onDeleteChannel, contextMenu, setContextMenu }) {
+  const chatEndRef = useRef(null);
+  const hasLoadedRef = useRef(null);
+
+  useEffect(() => {
+    if (workspace?.id && hasLoadedRef.current !== workspace.id) {
+      hasLoadedRef.current = workspace.id;
+      onLoadChannels();
+    }
+  }, [workspace?.id]);
+
+  useEffect(() => {
+    if (channels.length > 0 && !selectedChannel) {
+      const general = channels.find(c => c.name === "general") || channels[0];
+      onSelectChannel(general);
+    }
+  }, [channels, selectedChannel]);
+
+  const chatScrollContainerRef = useRef(null);
+  useEffect(() => {
+    if (chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTop = chatScrollContainerRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    if (!selectedChannel || !workspace) return;
+    const interval = setInterval(() => {
+      onLoadChannels();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [selectedChannel?.id, workspace?.id]);
+
+  return (
+    <div className="flex h-full min-h-0 flex-1" onClick={() => setContextMenu(null)}>
+      <div className="flex w-52 shrink-0 flex-col border-r border-white/10 bg-black/20">
+        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+          <h3 className="text-xs font-bold uppercase text-white/50">Kênh chat</h3>
+          {workspace?.role === "ADMIN" && (
+            <button type="button" onClick={onCreateChannel} className="text-white/40 hover:text-white transition">
+              <Plus className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+          {channels.map(ch => (
+            <div key={ch.id} className="group relative">
+              <button type="button" onClick={() => onSelectChannel(ch)} onContextMenu={(e) => { e.preventDefault(); setContextMenu({ id: ch.id, x: e.clientX, y: e.clientY }); }}
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition ${selectedChannel?.id === ch.id ? "bg-white/12 text-white font-semibold" : "text-white/60 hover:bg-white/5 hover:text-white/80"}`}>
+                <Hash className="h-4 w-4 shrink-0 opacity-50" />
+                <span className="truncate">{ch.name}</span>
+                {ch.unreadCount > 0 && (
+                  <span className="ml-auto flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">{ch.unreadCount > 9 ? "9+" : ch.unreadCount}</span>
+                )}
+              </button>
+              {workspace?.role === "ADMIN" && ch.name !== "general" && (
+                <button type="button" onClick={(e) => { e.stopPropagation(); setContextMenu({ id: ch.id, x: e.clientX, y: e.clientY }); }} className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 text-white/40 hover:text-white ${contextMenu?.id === ch.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"} transition`}>
+                  <MoreVertical className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        {selectedChannel ? (
+          <>
+            <div className="shrink-0 border-b border-white/10 bg-black/18 px-5 py-3">
+              <div className="flex items-center gap-2">
+                <Hash className="h-5 w-5 text-white/40" />
+                <div className="text-base font-semibold text-white">{selectedChannel.name}</div>
+              </div>
+              {selectedChannel.topic && <div className="mt-0.5 truncate text-xs text-white/40">{selectedChannel.topic}</div>}
+            </div>
+            <div ref={chatScrollContainerRef} className="min-h-0 flex-1 overflow-y-auto px-5 py-4 space-y-3">
+              {loading ? (
+                <div className="text-sm text-white/45">Đang tải tin nhắn...</div>
+              ) : messages.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-center text-sm text-white/45">
+                  Chưa có tin nhắn trong #{selectedChannel.name}. Hãy bắt đầu trò chuyện!
+                </div>
+              ) : (
+                messages.map((msg) => {
+                  const mine = msg.senderId === user?.id;
+                  return (
+                    <div key={msg.id} className={`flex gap-3 ${mine ? "flex-row-reverse" : ""}`}>
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-white">
+                        {getWorkspaceInitials(msg.sender?.fullName || "U")}
+                      </div>
+                      <div className={`max-w-[70%] ${mine ? "text-right" : ""}`}>
+                        <div className={`mb-0.5 flex items-center gap-2 ${mine ? "flex-row-reverse" : ""}`}>
+                          <span className="text-xs font-semibold text-white/70">{msg.sender?.fullName}</span>
+                          <span className="text-[10px] text-white/30">{new Date(msg.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span>
+                        </div>
+                        <div className={`inline-block rounded-2xl px-4 py-2 text-sm ${mine ? "bg-violet-600/40 text-white" : "bg-white/8 text-white/90"}`}>
+                          {msg.content}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            
+            </div>
+            <div className="shrink-0 border-t border-white/10 bg-black/18 px-5 py-3">
+              <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-2">
+                <input type="text" value={input} onChange={(e) => onInputChange(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onSend(); } }}
+                  placeholder={`Nhắn vào #${selectedChannel.name}...`}
+                  className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/30" />
+                <button type="button" onClick={onSend} className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-600 text-white hover:bg-violet-500 transition" title="Gửi">
+                  <Send className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex h-full items-center justify-center text-sm text-white/40">Chọn một kênh để bắt đầu chat</div>
+        )}
+      </div>
+
+      {contextMenu && (
+        <div className="fixed z-50 min-w-[160px] overflow-hidden rounded-xl border border-white/10 bg-[#2a2b2e] shadow-xl" style={{ top: Math.min(contextMenu.y, window.innerHeight - 100), left: Math.min(contextMenu.x, window.innerWidth - 180) }}>
+          <div className="flex flex-col py-1">
+            <button type="button" onClick={() => { onEditChannel(channels.find(c => c.id === contextMenu.id)); }} className="flex items-center gap-2 px-3 py-2 text-left text-sm text-white/70 hover:bg-white/10 hover:text-white">
+              <Settings className="h-4 w-4" />
+              Sửa kênh
+            </button>
+            <button type="button" onClick={() => { if (confirm("Bạn có chắc chắn muốn xoá kênh này?")) onDeleteChannel(contextMenu.id); }} className="flex items-center gap-2 px-3 py-2 text-left text-sm text-red-400 hover:bg-white/10 hover:text-red-300">
+              <Trash2 className="h-4 w-4" />
+              Xoá kênh
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { changePassword, checkUsername, login, me, register, requestChangePasswordCode, requestForgotPasswordCode, resendVerificationEmail, resetForgotPassword, updateProfile, updateUsername, verifyChangePasswordCode, verifyEmail, verifyForgotPasswordCode, requestRegisterCode, verifyRegisterCode } from "./auth.controller.js";
+import { changePassword, checkUsername, login, me, register, requestChangePasswordCode, requestForgotPasswordCode, resendVerificationEmail, resetForgotPassword, updateProfile, updateAvatar, updateUsername, verifyChangePasswordCode, verifyEmail, verifyForgotPasswordCode, requestRegisterCode, verifyRegisterCode } from "./auth.controller.js";
 import { requireAuth } from "../../middlewares/auth.middleware.js";
 
 export const authRouter = Router();
@@ -17,6 +17,7 @@ authRouter.get("/me", requireAuth, me);
 authRouter.get("/username/check", requireAuth, checkUsername);
 authRouter.patch("/username", requireAuth, updateUsername);
 authRouter.patch("/profile", requireAuth, updateProfile);
+authRouter.patch("/avatar", requireAuth, updateAvatar);
 authRouter.post("/change-password/code", requireAuth, requestChangePasswordCode);
 authRouter.post("/change-password/verify-code", requireAuth, verifyChangePasswordCode);
 authRouter.post("/change-password", requireAuth, changePassword);

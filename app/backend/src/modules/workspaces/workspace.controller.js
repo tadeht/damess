@@ -1,3 +1,4 @@
+import TrackingService from "../../lib/tracking.js";
 import crypto from "crypto";
 import { env } from "../../config/env.js";
 import { prisma } from "../../config/prisma.js";
@@ -15,6 +16,7 @@ const includeWorkspace = {
       id: true,
       fullName: true,
       email: true,
+      avatarData: true,
     },
   },
   members: {
@@ -25,6 +27,7 @@ const includeWorkspace = {
           fullName: true,
           username: true,
           email: true,
+          avatarData: true,
         },
       },
     },
@@ -37,10 +40,20 @@ const includeWorkspace = {
 function sanitizeWorkspace(workspace, currentUserId) {
   const currentMember = workspace.members?.find((member) => member.userId === currentUserId);
   const inviteLink = `${env.frontendUrl}/workspaces?invite=${workspace.inviteCode}`;
-  const activeMembers = workspace.members?.filter((member) => member.status === "ACTIVE") || [];
+  
+  // Áp dụng cơ chế Tracking Online cho tất cả thành viên trong Workspace
+  const activeMembers = (workspace.members?.filter((member) => member.status === "ACTIVE") || []).map(member => {
+    const status = TrackingService.getStatus(member.userId);
+    return {
+      ...member,
+      isOnline: status.isOnline,
+      lastActiveAt: status.lastActiveAt
+    };
+  });
 
   return {
     ...workspace,
+    members: activeMembers,
     inviteLink,
     currentMemberRole: currentMember?.role || null,
     memberCount: activeMembers.length,

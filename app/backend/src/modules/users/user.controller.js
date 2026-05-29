@@ -1,3 +1,4 @@
+import TrackingService from "../../lib/tracking.js";
 import bcrypt from "bcryptjs";
 import { prisma } from "../../config/prisma.js";
 import { created, ok } from "../../utils/api-response.js";
@@ -157,6 +158,18 @@ export async function deleteUser(req, res, next) {
     });
 
     return ok(res, null, "Đã xóa tài khoản");
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function pingHeartbeat(req, res, next) {
+  try {
+    const userId = req.user?.id;
+    if (userId) {
+      TrackingService.ping(userId);
+    }
+    return ok(res, { success: true });
   } catch (error) {
     next(error);
   }
